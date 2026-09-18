@@ -1,4 +1,9 @@
 import { getContratosData } from '../model/ContratoModel.js';
+import { getExtratoContrato } from '../model/ContratoModel.js';
+
+export async function loadExtratoDados(codContrato) {
+    return await getExtratoContrato(codContrato);
+}
 
 export async function loadDashboardMetrics() {
     const response = await getContratosData();

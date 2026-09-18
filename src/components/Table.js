@@ -2,7 +2,7 @@ import { formatCurrency, formatDate } from '../utils/formatters.js';
 
 export function renderTable(dados) {
     const rows = dados.map(row => `
-        <tr>
+        <tr class="clickable-row" data-codcont="${row.CODCONT}">
             <td>${row.PARCEIRO}</td>
             <td>${row.CONTRATO}</td>
             <td>${formatDate(row.DTINI)}</td>
