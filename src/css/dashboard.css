@@ -1,17 +1,22 @@
 #app-root {
-    max-width: 1400px;
-    margin: 0 auto;
+    width: 100%;
+    /* Removido o max-width para ocupar a tela inteira */
+}
+.dashboard-header {
+    border-bottom: 1px solid var(--border-color); /* Linha separadora sutil */
+    padding-bottom: 15px;
+    margin-bottom: 25px;
 }
 .dashboard-header h1 {
     font-weight: 700;
     color: var(--text-main);
-    font-size: 28px;
-    margin-bottom: 25px;
+    font-size: 24px;
+    margin: 0;
     letter-spacing: -0.5px;
 }
 .cards-container {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 20px;
     margin-bottom: 20px;
 }
