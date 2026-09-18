@@ -12,25 +12,30 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
+    <!-- CSS Modularizado -->
+    <link rel="stylesheet" type="text/css" href="${BASE_FOLDER}/src/css/base.css">
+    <link rel="stylesheet" type="text/css" href="${BASE_FOLDER}/src/css/dashboard.css">
+    <link rel="stylesheet" type="text/css" href="${BASE_FOLDER}/src/css/card.css">
+    <link rel="stylesheet" type="text/css" href="${BASE_FOLDER}/src/css/chart.css">
+    <link rel="stylesheet" type="text/css" href="${BASE_FOLDER}/src/css/table.css">
 
     <snk:load />
 </head>
 
 <body>
-    <aside class="sidebar"></aside>
-    <main>
-
-    </main>
+    <!-- Sem sidebar, apenas o container principal -->
+    <main id="app-root"></main>
 
     <script>
         window.APP_BASE_FOLDER = "${BASE_FOLDER}";
     </script>
 
+    <!-- Lib para Gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Orquestrador principal -->
+    <script type="module" src="${BASE_FOLDER}/src/main.js"></script>
 </body>
-
 </html>
