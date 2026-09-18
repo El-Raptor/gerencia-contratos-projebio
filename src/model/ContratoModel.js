@@ -63,6 +63,7 @@ export async function getContratosData() {
         SELECT 
               CON.PARCEIRO
             , CON.CONTRATO
+            , CON.CODCONT
             , CON.DTINI
             , CON.DTFIM
             , CON.QTDNEG

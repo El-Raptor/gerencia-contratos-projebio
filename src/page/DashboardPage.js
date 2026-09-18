@@ -25,7 +25,7 @@ export async function renderDashboard(rootElement) {
             <div class="charts-container">
                 <div class="chart-wrapper"><canvas id="chartQtdPendente"></canvas></div>
                 <div class="chart-wrapper"><canvas id="chartVlrFaturar"></canvas></div>
-                <div class="chart-wrapper full-width"><canvas id="chartEntregasMensais"></canvas></div>
+                <div class="chart-wrapper"><canvas id="chartEntregasMensais"></canvas></div>
             </div>
 
             <div class="table-container">

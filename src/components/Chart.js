@@ -6,16 +6,21 @@ export function renderCharts({ parceirosMap, entregasMensaisMap }) {
     const meses = Object.keys(entregasMensaisMap);
     const entregas = meses.map(m => entregasMensaisMap[m]);
 
-    // Cores baseadas nas variáveis de KPI
-    const colorPendente = '#6b7aff'; // kpi-open-text
-    const colorFaturar = '#00bcd4';  // kpi-closed-text
-    const colorEntregas = '#1f3c88'; // primary-color
+    const colorPendente = '#6b7aff'; 
+    const colorFaturar = '#00bcd4';  
+    const colorEntregas = '#1f3c88'; 
 
-    // Configuração base da fonte
     Chart.defaults.font.family = "'Inter', sans-serif";
     Chart.defaults.color = "#a3aed1";
 
-    // Gráfico: Qtd Pendente por Parceiro
+    const commonOptions = {
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false }
+        }
+    };
+
+    // Gráfico: Qtd Pendente por Parceiro (Horizontal)
     new Chart(document.getElementById('chartQtdPendente'), {
         type: 'bar',
         data: {
@@ -27,10 +32,17 @@ export function renderCharts({ parceirosMap, entregasMensaisMap }) {
                 borderRadius: 4
             }]
         },
-        options: { plugins: { legend: { display: false } } }
+        options: { 
+            ...commonOptions,
+            indexAxis: 'y', /* Transforma o gráfico em barras horizontais */
+            plugins: {
+                ...commonOptions.plugins,
+                title: { display: true, text: 'Quantidade Pendente', color: '#1b2559', font: { size: 14, weight: '600' } }
+            }
+        }
     });
 
-    // Gráfico: Vlr Faturar por Parceiro
+    // Gráfico: Vlr Faturar por Parceiro (Horizontal)
     new Chart(document.getElementById('chartVlrFaturar'), {
         type: 'bar',
         data: {
@@ -42,10 +54,17 @@ export function renderCharts({ parceirosMap, entregasMensaisMap }) {
                 borderRadius: 4
             }]
         },
-        options: { plugins: { legend: { display: false } } }
+        options: { 
+            ...commonOptions,
+            indexAxis: 'y', /* Transforma o gráfico em barras horizontais */
+            plugins: {
+                ...commonOptions.plugins,
+                title: { display: true, text: 'Valor a Faturar', color: '#1b2559', font: { size: 14, weight: '600' } }
+            }
+        }
     });
 
-    // Gráfico: Entregas Mensais
+    // Gráfico: Entregas Mensais (Linhas - Mantido igual)
     new Chart(document.getElementById('chartEntregasMensais'), {
         type: 'line',
         data: {
@@ -56,8 +75,15 @@ export function renderCharts({ parceirosMap, entregasMensaisMap }) {
                 borderColor: colorEntregas,
                 tension: 0.4,
                 fill: true,
-                backgroundColor: 'rgba(31, 60, 136, 0.08)' // accent-dim
+                backgroundColor: 'rgba(31, 60, 136, 0.08)'
             }]
+        },
+        options: { 
+            ...commonOptions,
+            plugins: {
+                ...commonOptions.plugins,
+                title: { display: true, text: 'Entregas Mensais', color: '#1b2559', font: { size: 14, weight: '600' } }
+            }
         }
     });
 }
