@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate } from '../utils/formatters.js';
+import { formatCurrency, formatNumber, formatDate } from '../utils/formatters.js';
 
 export function renderTable(dados) {
     const rows = dados.map(row => `
@@ -7,8 +7,8 @@ export function renderTable(dados) {
             <td>${row.CONTRATO}</td>
             <td>${formatDate(row.DTINI)}</td>
             <td>${formatDate(row.DTFIM)}</td>
-            <td>${row.QTDNEG}</td>
-            <td>${row.QTDPEN}</td>
+            <td>${formatNumber(row.QTDNEG)}</td>
+            <td>${formatNumber(row.QTDPEN)}</td>
             <td>${formatCurrency(row.VLRCAUCAO)}</td>
             <td>${formatCurrency(row.SALDOADIANT)}</td>
             <td>${formatCurrency(row.VLRFATURAR)}</td>

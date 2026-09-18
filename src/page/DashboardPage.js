@@ -2,8 +2,8 @@ import { loadDashboardMetrics } from '../service/ContratoService.js';
 import { renderCard } from '../components/Card.js';
 import { renderCharts } from '../components/Chart.js';
 import { renderTable } from '../components/Table.js';
-import { formatCurrency } from '../utils/formatters.js';
-import { renderExtratoPage } from './ExtratoPage.js'; // Novo Import
+import { formatCurrency, formatNumber } from '../utils/formatters.js'; // Novo Import
+import { renderExtratoPage } from './ExtratoPage.js'; 
 
 export async function renderDashboard(rootElement) {
     rootElement.innerHTML = `<div class="loader">Carregando Dashboard...</div>`;
@@ -17,10 +17,10 @@ export async function renderDashboard(rootElement) {
             </div>
             
             <div class="cards-container">
-                ${renderCard('Contratos Vigentes', data.cards.qtdVigentes, 'fas fa-file-contract', 'icon-open')}
+                ${renderCard('Contratos Vigentes', formatNumber(data.cards.qtdVigentes), 'fas fa-file-contract', 'icon-open')}
                 ${renderCard('Valor Total Contratado', formatCurrency(data.cards.valorTotalContratado), 'fas fa-money-bill-wave', 'icon-calc')}
                 ${renderCard('Valor a Faturar', formatCurrency(data.cards.valorFaturarTotal), 'fas fa-hand-holding-usd', 'icon-initial')}
-                ${renderCard('Quantidade Pendente', data.cards.qtdPendenteTotal, 'fas fa-boxes', 'icon-backlog')}
+                ${renderCard('Quantidade Pendente', formatNumber(data.cards.qtdPendenteTotal), 'fas fa-boxes', 'icon-backlog')}
             </div>
 
             <div class="charts-container">
@@ -36,14 +36,12 @@ export async function renderDashboard(rootElement) {
 
         renderCharts(data.charts);
 
-        // Event Delegation: Escuta cliques dentro da tabela
         const tableContainer = document.getElementById('mainTableContainer');
         tableContainer.addEventListener('click', (event) => {
             const row = event.target.closest('.clickable-row');
             if (row) {
                 const codContrato = row.getAttribute('data-codcont');
                 if (codContrato) {
-                    // Navega para a página de extrato
                     renderExtratoPage(rootElement, codContrato);
                 }
             }

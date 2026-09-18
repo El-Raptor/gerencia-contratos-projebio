@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate } from '../utils/formatters.js';
+import { formatCurrency, formatNumber, formatDate } from '../utils/formatters.js';
 
 export function renderExtratoTable(dados) {
     if (!dados || dados.length === 0) {
@@ -10,10 +10,10 @@ export function renderExtratoTable(dados) {
             <td><strong>${row.TIPOLANC || '-'}</strong></td>
             <td>${formatDate(row.DTMOV)}</td>
             <td>${row.NUFIN || '-'}</td>
-            <td>${row.QTDNEG || 0}</td>
+            <td>${formatNumber(row.QTDNEG)}</td>
             <td>${formatCurrency(row.VLRNOTA)}</td>
             <td>${formatCurrency(row.DEPOSITO)}</td>
-            <td>${row.QTD_PENDENTE || 0}</td>
+            <td>${formatNumber(row.QTD_PENDENTE)}</td>
             <td>${formatCurrency(row.CAUCAO_ACUMULADA)}</td>
             <td>${formatCurrency(row.SALDO_ADIANTAMENTO)}</td>
             <td>${formatCurrency(row.VLR_A_FATURAR)}</td>
