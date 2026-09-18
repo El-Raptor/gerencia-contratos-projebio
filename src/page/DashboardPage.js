@@ -3,6 +3,7 @@ import { renderCard } from '../components/Card.js';
 import { renderCharts } from '../components/Chart.js';
 import { renderTable } from '../components/Table.js';
 import { formatCurrency } from '../utils/formatters.js';
+import { renderExtratoPage } from './ExtratoPage.js'; // Novo Import
 
 export async function renderDashboard(rootElement) {
     rootElement.innerHTML = `<div class="loader">Carregando Dashboard...</div>`;
@@ -28,12 +29,26 @@ export async function renderDashboard(rootElement) {
                 <div class="chart-wrapper"><canvas id="chartEntregasMensais"></canvas></div>
             </div>
 
-            <div class="table-container">
+            <div class="table-container" id="mainTableContainer">
                 ${renderTable(data.tableData)}
             </div>
         `;
 
         renderCharts(data.charts);
+
+        // Event Delegation: Escuta cliques dentro da tabela
+        const tableContainer = document.getElementById('mainTableContainer');
+        tableContainer.addEventListener('click', (event) => {
+            const row = event.target.closest('.clickable-row');
+            if (row) {
+                const codContrato = row.getAttribute('data-codcont');
+                if (codContrato) {
+                    // Navega para a página de extrato
+                    renderExtratoPage(rootElement, codContrato);
+                }
+            }
+        });
+
     } catch (error) {
         rootElement.innerHTML = `<div class="error-msg">Erro ao carregar dados: ${error.message}</div>`;
     }
