@@ -21,6 +21,7 @@
     <link rel="stylesheet" type="text/css" href="${BASE_FOLDER}/src/css/card.css">
     <link rel="stylesheet" type="text/css" href="${BASE_FOLDER}/src/css/chart.css">
     <link rel="stylesheet" type="text/css" href="${BASE_FOLDER}/src/css/table.css">
+    <link rel="stylesheet" type="text/css" href="${BASE_FOLDER}/src/css/filter-drawer.css">
 
     <snk:load />
 </head>

@@ -1,10 +1,58 @@
-import { getContratosData, getExtratoContrato } from '../model/ContratoModel.js';
-import { parseFloatSafe, parseDateSafe } from '../utils/formatters.js'; // Importando parseDateSafe
+import { getContratosData, getExtratoContrato, getFiltrosOptions } from '../model/ContratoModel.js';
+import { parseFloatSafe, parseDateSafe } from '../utils/formatters.js';
 
-export async function loadDashboardMetrics() {
+// Nova função para buscar e separar os filtros
+export async function loadFiltrosOptions() {
+    const raw = await getFiltrosOptions();
+    return {
+        parceiros: raw.filter(r => r.TIPO === 'Parceiro'),
+        contratos: raw.filter(r => r.TIPO === 'Contrato')
+    };
+}
+
+// Atualizado para receber os filtros
+export async function loadDashboardMetrics(filtros = { apenasVigentes: false, parceiro: '', contrato: '' }) {
     const response = await getContratosData();
-    const dados = response.data || response; 
+    let dados = response.data || response; 
 
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    // 1. Aplicar Filtros recebidos
+    dados = dados.filter(row => {
+        let aprovado = true;
+
+        // Filtro Vigente
+        if (filtros.apenasVigentes) {
+            const dtIni = parseDateSafe(row.DTINI);
+            const dtFim = parseDateSafe(row.DTFIM);
+            if (dtIni && dtFim) {
+                dtIni.setHours(0, 0, 0, 0);
+                dtFim.setHours(0, 0, 0, 0);
+                if (hoje < dtIni || hoje > dtFim) aprovado = false;
+            } else {
+                aprovado = false; // Se não tem data não está vigente
+            }
+        }
+
+        // Filtro Parceiro (compara o código no início da string)
+        if (aprovado && filtros.parceiro) {
+            if (!row.PARCEIRO || !row.PARCEIRO.startsWith(filtros.parceiro + ' -')) {
+                aprovado = false;
+            }
+        }
+
+        // Filtro Contrato
+        if (aprovado && filtros.contrato) {
+            if (row.CODCONT != filtros.contrato) {
+                aprovado = false;
+            }
+        }
+
+        return aprovado;
+    });
+
+    // 2. Cálculos das Métricas (usando os dados já filtrados)
     let qtdVigentes = 0;
     let valorTotalContratado = 0;
     let valorFaturarTotal = 0;
@@ -12,10 +60,6 @@ export async function loadDashboardMetrics() {
 
     const parceirosMap = {};
     const entregasMensaisMap = {};
-    
-    // Zera as horas para comparar datas de forma justa
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
 
     dados.forEach(row => {
         const vlrFaturar = parseFloatSafe(row.VLRFATURAR);
@@ -27,11 +71,10 @@ export async function loadDashboardMetrics() {
         const dtIni = parseDateSafe(row.DTINI);
         const dtFim = parseDateSafe(row.DTFIM);
 
-        // 1. Contratos Vigentes: Hoje está entre a data inicial e a data final
+        // Quantidade Vigente
         if (dtIni && dtFim) {
             dtIni.setHours(0, 0, 0, 0);
             dtFim.setHours(0, 0, 0, 0);
-            
             if (hoje >= dtIni && hoje <= dtFim) {
                 qtdVigentes++;
             }
@@ -47,14 +90,12 @@ export async function loadDashboardMetrics() {
         parceirosMap[row.PARCEIRO].pendente += qtdPen;
         parceirosMap[row.PARCEIRO].vlrFaturar += vlrFaturar;
 
-        // 2. Gráfico Entregas Mensais
         if (dtIni) {
             const mesAno = `${String(dtIni.getMonth() + 1).padStart(2, '0')}/${dtIni.getFullYear()}`;
             entregasMensaisMap[mesAno] = (entregasMensaisMap[mesAno] || 0) + qtdNeg;
         }
     });
 
-    // Opcional: Ordena os meses do gráfico de linha de forma cronológica
     const mesesOrdenados = Object.keys(entregasMensaisMap).sort((a, b) => {
         const [mesA, anoA] = a.split('/');
         const [mesB, anoB] = b.split('/');
@@ -62,9 +103,7 @@ export async function loadDashboardMetrics() {
     });
 
     const entregasMensaisOrdenadoMap = {};
-    mesesOrdenados.forEach(mesAno => {
-        entregasMensaisOrdenadoMap[mesAno] = entregasMensaisMap[mesAno];
-    });
+    mesesOrdenados.forEach(mesAno => { entregasMensaisOrdenadoMap[mesAno] = entregasMensaisMap[mesAno]; });
 
     return {
         cards: { qtdVigentes, valorTotalContratado, valorFaturarTotal, qtdPendenteTotal },

@@ -183,3 +183,32 @@ export async function getExtratoContrato(codContrato) {
     }
     return results.data || results;
 }
+
+export async function getFiltrosOptions() {
+    const query = `
+        SELECT DISTINCT 
+              PAR.CODPARC AS CODIGO
+            , PAR.NOMEPARC AS DESCRICAO
+            , 'Parceiro' AS TIPO
+        FROM
+            AD_REGCONT CON
+            JOIN TGFCAB CAB ON CON.CODCONT = CAB.AD_CONTRATO
+            JOIN TGFPAR PAR ON CAB.CODPARC = PAR.CODPARC
+            
+        UNION ALL
+
+        SELECT
+              CON.CODCONT AS CODIGO
+            , CON.CONTRATO AS DESCRICAO
+            , 'Contrato' AS TIPO
+        FROM
+            AD_REGCONT CON
+    `;
+
+    const results = await JSK.consultar(query, []);
+
+    if (results.status == 0) {
+        throw new Error(results.statusMessage);
+    }
+    return results.data || results;
+}
