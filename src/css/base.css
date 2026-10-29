@@ -65,3 +65,12 @@ body {
 .button-container:hover {
     background-color: var(--primary-hover);
 }
+.button-container:disabled {
+    background-color: var(--text-muted);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.button-container:disabled:hover {
+    background-color: var(--text-muted);
+}

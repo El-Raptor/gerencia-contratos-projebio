@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Remover o frame padrão do ERP (gadget 165)
-    await LayoutService.ajustar('index.jsp', 165);
+    await LayoutService.ajustar('index.jsp', 171);
 
     // Inicializar o Dashboard
     const root = document.getElementById('app-root');

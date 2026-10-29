@@ -35,3 +35,15 @@
         grid-template-columns: 1fr; 
     }
 }
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+@media (max-width: 768px) {
+    .dashboard-header {
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+}

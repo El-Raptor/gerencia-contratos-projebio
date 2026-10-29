@@ -56,8 +56,10 @@ export async function getContratosData() {
                   CON.CODCONT
                 , SUM(FIN.VLRDESDOB) AS VLRFIN
             FROM TGFFIN FIN
-                JOIN AD_REGCONT CON ON FIN.AD_CONTRATO = CON.CODCONT
+                JOIN TGFCAB CAB ON FIN.NUNOTA = CAB.NUNOTA
+                JOIN AD_REGCONT CON ON CAB.AD_CONTRATO = CON.CODCONT
             WHERE FIN.CODTIPOPER IN (1407)
+                AND FIN.CODTIPTIT IN (4, 34)
             GROUP BY CON.CODCONT
         )
         SELECT 
@@ -97,15 +99,17 @@ export async function getExtratoContrato(codContrato) {
                   'Contrato' AS TIPOLANC
                 , CAB.DTNEG AS DTMOV
                 , MIN(FIN.NUFIN) AS NUFIN
+                , CAB.NUNOTA AS NUNOTA
                 , SUM(ITE.QTDNEG) AS QTDNEG
                 , CAB.VLRNOTA AS VLRNOTA
                 , CAST(NULL AS NUMBER) AS DEPOSITO
                 , CAB.NUNOTA AS ID_REGISTRO
+                , CAB.STATUSNOTA AS STATUSNOTA
             FROM TGFCAB CAB
                 JOIN TGFITE ITE ON CAB.NUNOTA = ITE.NUNOTA
                 LEFT JOIN TGFFIN FIN ON CAB.NUNOTA = FIN.NUNOTA
             WHERE CAB.CODTIPOPER = 1314 AND CAB.AD_CONTRATO = ?
-            GROUP BY CAB.DTNEG, CAB.VLRNOTA, CAB.NUNOTA
+            GROUP BY CAB.DTNEG, CAB.VLRNOTA, CAB.NUNOTA, CAB.STATUSNOTA
 
             UNION ALL
 
@@ -113,10 +117,12 @@ export async function getExtratoContrato(codContrato) {
                   'Caução' AS TIPOLANC
                 , FIN.DHBAIXA AS DTMOV
                 , FIN.NUFIN AS NUFIN
+                , CAST(NULL AS NUMBER) AS NUNOTA
                 , 0 AS QTDNEG
                 , CAST(NULL AS NUMBER) AS VLRNOTA
                 , SUM(FIN.VLRDESDOB) AS DEPOSITO
                 , FIN.NUFIN AS ID_REGISTRO
+                , CAST(NULL AS VARCHAR2(1)) AS STATUSNOTA
             FROM TGFFIN FIN
             WHERE FIN.CODTIPOPER = 1607 AND FIN.CODTIPTIT = 1000 AND FIN.AD_CONTRATO = ?
             GROUP BY FIN.DHBAIXA, FIN.NUFIN
@@ -127,10 +133,12 @@ export async function getExtratoContrato(codContrato) {
                   'Adiantamento' AS TIPOLANC
                 , FIN.DHBAIXA AS DTMOV
                 , FIN.NUFIN AS NUFIN
+                , CAST(NULL AS NUMBER) AS NUNOTA
                 , 0 AS QTDNEG
                 , CAST(NULL AS NUMBER) AS VLRNOTA
                 , SUM(FIN.VLRDESDOB) AS DEPOSITO
                 , FIN.NUFIN AS ID_REGISTRO
+                , CAST(NULL AS VARCHAR2(1)) AS STATUSNOTA
             FROM TGFFIN FIN
             WHERE FIN.CODTIPOPER = 1607 AND FIN.CODTIPTIT = 2000 AND FIN.AD_CONTRATO = ?
             GROUP BY FIN.DHBAIXA, FIN.NUFIN
@@ -140,20 +148,21 @@ export async function getExtratoContrato(codContrato) {
             SELECT 
                   'Nota Fiscal' AS TIPOLANC
                 , CAB.DTNEG AS DTMOV
-                , MIN(FIN.NUFIN) AS NUFIN
+                , (SELECT MIN(NUFIN) FROM TGFFIN WHERE NUNOTA = CAB.NUNOTA) AS NUFIN
+                , CAB.NUNOTA AS NUNOTA
                 , SUM(ITE.QTDNEG) AS QTDNEG
                 , CAB.VLRNOTA AS VLRNOTA
                 , CAST(NULL AS NUMBER) AS DEPOSITO
                 , CAB.NUNOTA AS ID_REGISTRO
+                , CAB.STATUSNOTA AS STATUSNOTA
             FROM TGFCAB CAB
                 JOIN TGFITE ITE ON CAB.NUNOTA = ITE.NUNOTA
-                LEFT JOIN TGFFIN FIN ON CAB.NUNOTA = FIN.NUNOTA
             WHERE CAB.CODTIPOPER = 1407 AND CAB.AD_CONTRATO = ?
-            GROUP BY CAB.DTNEG, CAB.VLRNOTA, CAB.NUNOTA
+            GROUP BY CAB.DTNEG, CAB.VLRNOTA, CAB.NUNOTA, CAB.STATUSNOTA
         ),
         ACUMULADOS AS (
             SELECT 
-                  TIPOLANC, DTMOV, NUFIN, QTDNEG, VLRNOTA, DEPOSITO
+                  TIPOLANC, DTMOV, NUFIN, NUNOTA, STATUSNOTA, QTDNEG, VLRNOTA, DEPOSITO
                 , SUM(CASE WHEN TIPOLANC = 'Contrato' THEN QTDNEG ELSE 0 END) OVER (ORDER BY NUFIN NULLS FIRST) AS TOT_QTD_CONTRATO
                 , SUM(CASE WHEN TIPOLANC = 'Nota Fiscal' THEN QTDNEG ELSE 0 END) OVER (ORDER BY NUFIN NULLS FIRST) AS TOT_QTD_NOTA
                 , SUM(CASE WHEN TIPOLANC = 'Contrato' THEN VLRNOTA ELSE 0 END) OVER (ORDER BY NUFIN NULLS FIRST) AS TOT_VLR_CONTRATO
@@ -163,11 +172,11 @@ export async function getExtratoContrato(codContrato) {
             FROM MOVIMENTACOES
         )
         SELECT 
-              TIPOLANC, DTMOV, NUFIN, QTDNEG, VLRNOTA, DEPOSITO
+              TIPOLANC, DTMOV, NUFIN, NUNOTA, STATUSNOTA, QTDNEG, VLRNOTA, DEPOSITO
             , (TOT_QTD_CONTRATO - TOT_QTD_NOTA) AS QTD_PENDENTE
             , TOT_VLR_CAUCAO AS CAUCAO_ACUMULADA
-            , GREATEST(0, TOT_VLR_ADIANT - TOT_VLRNOTA) AS SALDO_ADIANTAMENTO
-            , (TOT_VLR_CONTRATO - TOT_VLR_CAUCAO - GREATEST(TOT_VLR_ADIANT, TOT_VLRNOTA)) AS VLR_A_FATURAR
+            , (TOT_VLR_ADIANT - TOT_VLRNOTA) AS SALDO_ADIANTAMENTO
+            , (TOT_VLR_CONTRATO - TOT_VLR_CAUCAO - TOT_VLR_ADIANT) AS VLR_A_FATURAR
         FROM ACUMULADOS
         ORDER BY NUFIN NULLS FIRST
     `;
