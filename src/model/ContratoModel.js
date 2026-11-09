@@ -73,8 +73,16 @@ export async function getContratosData() {
             , CON.DTFIM
             , CON.QTDNEG
             , CON.QTDNEG - COALESCE(ENT.QTDNEG, 0) AS QTDPEN
-            , ADI.VLRCAUCAO
-            , COALESCE(ADI.VLRADIANT, 0) - COALESCE(FIN.VLRFIN, 0) AS SALDOADIANT
+            -- Consumo: o financeiro das notas gasta primeiro o adiantamento,
+            -- depois a caução; só então o adiantamento fica negativo
+            , LEAST(
+                  COALESCE(ADI.VLRCAUCAO, 0)
+                , GREATEST(COALESCE(ADI.VLRADIANT, 0) + COALESCE(ADI.VLRCAUCAO, 0) - COALESCE(FIN.VLRFIN, 0), 0)
+              ) AS VLRCAUCAO
+            , GREATEST(
+                  COALESCE(ADI.VLRADIANT, 0) - COALESCE(FIN.VLRFIN, 0)
+                , LEAST(COALESCE(ADI.VLRADIANT, 0) + COALESCE(ADI.VLRCAUCAO, 0) - COALESCE(FIN.VLRFIN, 0), 0)
+              ) AS SALDOADIANT
             , CON.VLRNOTA - COALESCE(ADI.VLRCAUCAO, 0) - COALESCE(ADI.VLRADIANT, 0) AS VLRFATURAR
         FROM CONTRATO CON
             LEFT JOIN ENTREGA ENT ON CON.CODCONT = ENT.CODCONT
@@ -118,6 +126,12 @@ export async function getExtratoContrato(codContrato) {
             WHERE CAB.CODTIPOPER = ${cfg.topProgramacao} AND CAB.AD_CONTRATO = ?
             GROUP BY CAB.DTNEG, CAB.VLRNOTA, CAB.NUNOTA, CAB.STATUSNOTA
     ` : '';
+
+    // Ordem cronológica do extrato. Define tanto a exibição quanto os saldos acumulados:
+    // 1) dia do movimento (sem hora; lançamentos sem data vão para o fim)
+    // 2) NUFIN como desempate dentro do mesmo dia
+    // 3) ID_REGISTRO como último desempate, para a ordem ser sempre a mesma
+    const ORDEM_EXTRATO = 'TRUNC(DTMOV) NULLS LAST, NUFIN NULLS FIRST, ID_REGISTRO';
 
     const query = `
         WITH MOVIMENTACOES AS (
@@ -188,23 +202,31 @@ export async function getExtratoContrato(codContrato) {
         ),
         ACUMULADOS AS (
             SELECT 
-                  TIPOLANC, DTMOV, NUFIN, NUNOTA, STATUSNOTA, QTDNEG, VLRNOTA, DEPOSITO
-                , SUM(CASE WHEN TIPOLANC = 'Contrato' THEN QTDNEG ELSE 0 END) OVER (ORDER BY NUFIN NULLS FIRST) AS TOT_QTD_CONTRATO
-                , SUM(CASE WHEN TIPOLANC = 'Nota Fiscal' THEN QTDNEG ELSE 0 END) OVER (ORDER BY NUFIN NULLS FIRST) AS TOT_QTD_NOTA
-                , SUM(CASE WHEN TIPOLANC = 'Contrato' THEN VLRNOTA ELSE 0 END) OVER (ORDER BY NUFIN NULLS FIRST) AS TOT_VLR_CONTRATO
-                , SUM(CASE WHEN TIPOLANC = 'Caução' THEN DEPOSITO ELSE 0 END) OVER (ORDER BY NUFIN NULLS FIRST) AS TOT_VLR_CAUCAO
-                , SUM(CASE WHEN TIPOLANC = 'Adiantamento' THEN DEPOSITO ELSE 0 END) OVER (ORDER BY NUFIN NULLS FIRST) AS TOT_VLR_ADIANT
-                , SUM(CASE WHEN TIPOLANC = 'Nota Fiscal' THEN VLRNOTA ELSE 0 END) OVER (ORDER BY NUFIN NULLS FIRST) AS TOT_VLRNOTA
+                  TIPOLANC, DTMOV, NUFIN, NUNOTA, STATUSNOTA, QTDNEG, VLRNOTA, DEPOSITO, ID_REGISTRO
+                , SUM(CASE WHEN TIPOLANC = 'Contrato' THEN QTDNEG ELSE 0 END) OVER (ORDER BY ${ORDEM_EXTRATO} ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS TOT_QTD_CONTRATO
+                , SUM(CASE WHEN TIPOLANC = 'Nota Fiscal' THEN QTDNEG ELSE 0 END) OVER (ORDER BY ${ORDEM_EXTRATO} ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS TOT_QTD_NOTA
+                , SUM(CASE WHEN TIPOLANC = 'Contrato' THEN VLRNOTA ELSE 0 END) OVER (ORDER BY ${ORDEM_EXTRATO} ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS TOT_VLR_CONTRATO
+                , SUM(CASE WHEN TIPOLANC = 'Caução' THEN DEPOSITO ELSE 0 END) OVER (ORDER BY ${ORDEM_EXTRATO} ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS TOT_VLR_CAUCAO
+                , SUM(CASE WHEN TIPOLANC = 'Adiantamento' THEN DEPOSITO ELSE 0 END) OVER (ORDER BY ${ORDEM_EXTRATO} ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS TOT_VLR_ADIANT
+                , SUM(CASE WHEN TIPOLANC = 'Nota Fiscal' THEN VLRNOTA ELSE 0 END) OVER (ORDER BY ${ORDEM_EXTRATO} ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS TOT_VLRNOTA
             FROM MOVIMENTACOES
         )
         SELECT 
               TIPOLANC, DTMOV, NUFIN, NUNOTA, STATUSNOTA, QTDNEG, VLRNOTA, DEPOSITO
             , (TOT_QTD_CONTRATO - TOT_QTD_NOTA) AS QTD_PENDENTE
-            , TOT_VLR_CAUCAO AS CAUCAO_ACUMULADA
-            , (TOT_VLR_ADIANT - TOT_VLRNOTA) AS SALDO_ADIANTAMENTO
+            -- Consumo: as notas gastam primeiro o adiantamento,
+            -- depois a caução; só então o adiantamento fica negativo
+            , LEAST(
+                  TOT_VLR_CAUCAO
+                , GREATEST(TOT_VLR_ADIANT + TOT_VLR_CAUCAO - TOT_VLRNOTA, 0)
+              ) AS SALDO_CAUCAO
+            , GREATEST(
+                  TOT_VLR_ADIANT - TOT_VLRNOTA
+                , LEAST(TOT_VLR_ADIANT + TOT_VLR_CAUCAO - TOT_VLRNOTA, 0)
+              ) AS SALDO_ADIANTAMENTO
             , (TOT_VLR_CONTRATO - TOT_VLR_CAUCAO - TOT_VLR_ADIANT) AS VLR_A_FATURAR
         FROM ACUMULADOS
-        ORDER BY NUFIN NULLS FIRST
+        ORDER BY ${ORDEM_EXTRATO}
     `;
 
     // Um único parâmetro, replicado em todas as posições "?" da query

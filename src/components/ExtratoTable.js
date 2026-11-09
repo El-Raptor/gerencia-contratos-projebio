@@ -30,7 +30,7 @@ export function renderExtratoTable(dados) {
             <td>${formatCurrency(row.VLRNOTA)}</td>
             <td>${formatCurrency(row.DEPOSITO)}</td>
             <td>${formatNumber(row.QTD_PENDENTE)}</td>
-            <td>${formatCurrency(row.CAUCAO_ACUMULADA)}</td>
+            <td>${formatCurrency(row.SALDO_CAUCAO)}</td>
             <td>${formatCurrency(row.SALDO_ADIANTAMENTO)}</td>
             <td>${formatCurrency(row.VLR_A_FATURAR)}</td>
         </tr>
@@ -42,7 +42,7 @@ export function renderExtratoTable(dados) {
                 <tr>
                     <th>Tipo Lanç.</th><th>Data Mov.</th><th>Nº Fin.</th><th>Nº Nota</th><th>Status Nota</th>
                     <th>Qtd. Neg.</th><th>Vlr. Nota</th><th>Depósito</th>
-                    <th>Qtd. Pend.</th><th>Caução Acum.</th><th>Saldo Adiant.</th><th>Vlr. a Faturar</th>
+                    <th>Qtd. Pend.</th><th>Saldo Caução</th><th>Saldo Adiant.</th><th>Vlr. a Faturar</th>
                 </tr>
             </thead>
             <tbody>${rows}</tbody>
@@ -64,7 +64,7 @@ export async function exportExtratoExcel(dados, codContrato) {
         { titulo: 'Vlr. Nota',      valor: r => toNumber(r.VLRNOTA),            tipo: 'moeda' },
         { titulo: 'Depósito',       valor: r => toNumber(r.DEPOSITO),           tipo: 'moeda' },
         { titulo: 'Qtd. Pend.',     valor: r => toNumber(r.QTD_PENDENTE),       tipo: 'qtd' },
-        { titulo: 'Caução Acum.',   valor: r => toNumber(r.CAUCAO_ACUMULADA),   tipo: 'moeda' },
+        { titulo: 'Saldo Caução',   valor: r => toNumber(r.SALDO_CAUCAO),       tipo: 'moeda' },
         { titulo: 'Saldo Adiant.',  valor: r => toNumber(r.SALDO_ADIANTAMENTO), tipo: 'moeda' },
         { titulo: 'Vlr. a Faturar', valor: r => toNumber(r.VLR_A_FATURAR),      tipo: 'moeda' }
     ];

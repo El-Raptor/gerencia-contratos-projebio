@@ -20,7 +20,7 @@ export function renderTable(dados) {
             <thead>
                 <tr>
                     <th>Parceiro</th><th>Contrato</th><th>Data Início</th><th>Data Fim</th>
-                    <th>Qtd. Neg.</th><th>Qtd. Pen.</th><th>Vlr Caução</th><th>Saldo Adiant.</th><th>Vlr Faturar</th>
+                    <th>Qtd. Neg.</th><th>Qtd. Pen.</th><th>Saldo Caução</th><th>Saldo Adiant.</th><th>Vlr Faturar</th>
                 </tr>
             </thead>
             <tbody>${rows}</tbody>
