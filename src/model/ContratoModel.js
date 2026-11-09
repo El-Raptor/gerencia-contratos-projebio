@@ -1,6 +1,9 @@
 import { JSK } from "https://cdn.jsdelivr.net/npm/@jtandrelevicius/utils-js-library@latest/index.js";
+import { getConfigTipo } from '../utils/tipoContrato.js';
 
 export async function getContratosData() {
+    const cfg = getConfigTipo();
+
     const query = `
         WITH
         CONTRATO AS (
@@ -18,10 +21,10 @@ export async function getContratosData() {
                 JOIN TGFITE ITE ON CAB.NUNOTA = ITE.NUNOTA
                 JOIN TGFTOP TPO ON CAB.CODTIPOPER = TPO.CODTIPOPER
                                AND CAB.DHTIPOPER = TPO.DHALTER
-            WHERE CAB.CODTIPOPER = 1314
+            WHERE CAB.CODTIPOPER = ${cfg.topContrato}
             GROUP BY PAR.CODPARC, PAR.NOMEPARC, CAB.VLRNOTA, CON.CODCONT, CON.CONTRATO, CON.DTINI, CON.DTFIM
         ),
-        COMPRA AS (
+        ENTREGA AS (
             SELECT 
                   PAR.CODPARC || ' - ' || PAR.NOMEPARC AS PARCEIRO
                 , CON.CODCONT
@@ -33,7 +36,7 @@ export async function getContratosData() {
                 JOIN AD_REGCONT CON ON CAB.AD_CONTRATO = CON.CODCONT
                 JOIN TGFPAR PAR ON CAB.CODPARC = PAR.CODPARC
                 JOIN TGFITE ITE ON CAB.NUNOTA = ITE.NUNOTA
-            WHERE CAB.CODTIPOPER = 1407
+            WHERE CAB.CODTIPOPER = ${cfg.topNota}
             GROUP BY PAR.CODPARC, PAR.NOMEPARC, CON.CODCONT, CON.CONTRATO, CON.DTINI, CON.DTFIM
         ),
         ADIANTAMENTO AS (
@@ -43,12 +46,12 @@ export async function getContratosData() {
                 , CON.CONTRATO
                 , CON.DTINI
                 , CON.DTFIM
-                , SUM(CASE WHEN CODTIPTIT = 1000 THEN FIN.VLRDESDOB ELSE 0 END) AS VLRCAUCAO
-                , SUM(CASE WHEN CODTIPTIT = 2000 THEN FIN.VLRDESDOB ELSE 0 END) AS VLRADIANT
+                , SUM(CASE WHEN CODTIPTIT = ${cfg.titCaucao} THEN FIN.VLRDESDOB ELSE 0 END) AS VLRCAUCAO
+                , SUM(CASE WHEN CODTIPTIT = ${cfg.titAdiantamento} THEN FIN.VLRDESDOB ELSE 0 END) AS VLRADIANT
             FROM TGFFIN FIN
                 JOIN AD_REGCONT CON ON FIN.AD_CONTRATO = CON.CODCONT
                 JOIN TGFPAR PAR ON FIN.CODPARC = PAR.CODPARC
-            WHERE FIN.CODTIPOPER IN (1607) AND FIN.CODTIPTIT IN (1000, 2000)
+            WHERE FIN.CODTIPOPER IN (${cfg.topAdiantamento}) AND FIN.CODTIPTIT IN (${cfg.titCaucao}, ${cfg.titAdiantamento})
             GROUP BY PAR.CODPARC, PAR.NOMEPARC, CON.CODCONT, CON.CONTRATO, CON.DTINI, CON.DTFIM
         ),
         FINANCEIRO AS (
@@ -58,8 +61,8 @@ export async function getContratosData() {
             FROM TGFFIN FIN
                 JOIN TGFCAB CAB ON FIN.NUNOTA = CAB.NUNOTA
                 JOIN AD_REGCONT CON ON CAB.AD_CONTRATO = CON.CODCONT
-            WHERE FIN.CODTIPOPER IN (1407)
-                AND FIN.CODTIPTIT IN (4, 34)
+            WHERE FIN.CODTIPOPER IN (${cfg.topNota})
+                AND FIN.CODTIPTIT IN (${cfg.titulosNota.join(', ')})
             GROUP BY CON.CODCONT
         )
         SELECT 
@@ -69,12 +72,12 @@ export async function getContratosData() {
             , CON.DTINI
             , CON.DTFIM
             , CON.QTDNEG
-            , CON.QTDNEG - COM.QTDNEG AS QTDPEN
+            , CON.QTDNEG - COALESCE(ENT.QTDNEG, 0) AS QTDPEN
             , ADI.VLRCAUCAO
             , COALESCE(ADI.VLRADIANT, 0) - COALESCE(FIN.VLRFIN, 0) AS SALDOADIANT
             , CON.VLRNOTA - COALESCE(ADI.VLRCAUCAO, 0) - COALESCE(ADI.VLRADIANT, 0) AS VLRFATURAR
         FROM CONTRATO CON
-            LEFT JOIN COMPRA COM ON CON.CODCONT = COM.CODCONT
+            LEFT JOIN ENTREGA ENT ON CON.CODCONT = ENT.CODCONT
             LEFT JOIN ADIANTAMENTO ADI ON CON.CODCONT = ADI.CODCONT
             LEFT JOIN FINANCEIRO FIN ON CON.CODCONT = FIN.CODCONT
     `;
@@ -93,6 +96,29 @@ export async function getContratosData() {
 }
 
 export async function getExtratoContrato(codContrato) {
+    const cfg = getConfigTipo();
+
+    // Programação de Venda: só existe em vendas e é apenas informativa no extrato
+    // (o TIPOLANC 'Programação' não entra em nenhum acumulado abaixo)
+    const blocoProgramacao = cfg.topProgramacao ? `
+            UNION ALL
+
+            SELECT 
+                  'Programação' AS TIPOLANC
+                , CAB.DTNEG AS DTMOV
+                , (SELECT MIN(NUFIN) FROM TGFFIN WHERE NUNOTA = CAB.NUNOTA) AS NUFIN
+                , CAB.NUNOTA AS NUNOTA
+                , SUM(ITE.QTDNEG) AS QTDNEG
+                , CAB.VLRNOTA AS VLRNOTA
+                , CAST(NULL AS NUMBER) AS DEPOSITO
+                , CAB.NUNOTA AS ID_REGISTRO
+                , CAB.STATUSNOTA AS STATUSNOTA
+            FROM TGFCAB CAB
+                JOIN TGFITE ITE ON CAB.NUNOTA = ITE.NUNOTA
+            WHERE CAB.CODTIPOPER = ${cfg.topProgramacao} AND CAB.AD_CONTRATO = ?
+            GROUP BY CAB.DTNEG, CAB.VLRNOTA, CAB.NUNOTA, CAB.STATUSNOTA
+    ` : '';
+
     const query = `
         WITH MOVIMENTACOES AS (
             SELECT 
@@ -108,7 +134,7 @@ export async function getExtratoContrato(codContrato) {
             FROM TGFCAB CAB
                 JOIN TGFITE ITE ON CAB.NUNOTA = ITE.NUNOTA
                 LEFT JOIN TGFFIN FIN ON CAB.NUNOTA = FIN.NUNOTA
-            WHERE CAB.CODTIPOPER = 1314 AND CAB.AD_CONTRATO = ?
+            WHERE CAB.CODTIPOPER = ${cfg.topContrato} AND CAB.AD_CONTRATO = ?
             GROUP BY CAB.DTNEG, CAB.VLRNOTA, CAB.NUNOTA, CAB.STATUSNOTA
 
             UNION ALL
@@ -124,7 +150,7 @@ export async function getExtratoContrato(codContrato) {
                 , FIN.NUFIN AS ID_REGISTRO
                 , CAST(NULL AS VARCHAR2(1)) AS STATUSNOTA
             FROM TGFFIN FIN
-            WHERE FIN.CODTIPOPER = 1607 AND FIN.CODTIPTIT = 1000 AND FIN.AD_CONTRATO = ?
+            WHERE FIN.CODTIPOPER = ${cfg.topAdiantamento} AND FIN.CODTIPTIT = ${cfg.titCaucao} AND FIN.AD_CONTRATO = ?
             GROUP BY FIN.DHBAIXA, FIN.NUFIN
 
             UNION ALL
@@ -140,9 +166,9 @@ export async function getExtratoContrato(codContrato) {
                 , FIN.NUFIN AS ID_REGISTRO
                 , CAST(NULL AS VARCHAR2(1)) AS STATUSNOTA
             FROM TGFFIN FIN
-            WHERE FIN.CODTIPOPER = 1607 AND FIN.CODTIPTIT = 2000 AND FIN.AD_CONTRATO = ?
+            WHERE FIN.CODTIPOPER = ${cfg.topAdiantamento} AND FIN.CODTIPTIT = ${cfg.titAdiantamento} AND FIN.AD_CONTRATO = ?
             GROUP BY FIN.DHBAIXA, FIN.NUFIN
-
+            ${blocoProgramacao}
             UNION ALL
 
             SELECT 
@@ -157,7 +183,7 @@ export async function getExtratoContrato(codContrato) {
                 , CAB.STATUSNOTA AS STATUSNOTA
             FROM TGFCAB CAB
                 JOIN TGFITE ITE ON CAB.NUNOTA = ITE.NUNOTA
-            WHERE CAB.CODTIPOPER = 1407 AND CAB.AD_CONTRATO = ?
+            WHERE CAB.CODTIPOPER = ${cfg.topNota} AND CAB.AD_CONTRATO = ?
             GROUP BY CAB.DTNEG, CAB.VLRNOTA, CAB.NUNOTA, CAB.STATUSNOTA
         ),
         ACUMULADOS AS (
@@ -181,11 +207,11 @@ export async function getExtratoContrato(codContrato) {
         ORDER BY NUFIN NULLS FIRST
     `;
 
-    // A variável é instanciada apenas uma vez no JS
+    // Um único parâmetro, replicado em todas as posições "?" da query
+    // (4 em compras, 5 em vendas por causa do bloco de Programação)
     const param = { value: codContrato, type: 'I' };
-    
-    // E replicada nas 4 posições do Prepared Statement dinamicamente
-    const results = await JSK.consultar(query, [param, param, param, param]);
+    const qtdParams = (query.match(/\?/g) || []).length;
+    const results = await JSK.consultar(query, Array(qtdParams).fill(param));
 
     if (results.status == 0) {
         throw new Error(results.statusMessage);
@@ -194,6 +220,8 @@ export async function getExtratoContrato(codContrato) {
 }
 
 export async function getFiltrosOptions() {
+    const cfg = getConfigTipo();
+
     const query = `
         SELECT DISTINCT 
               PAR.CODPARC AS CODIGO
@@ -203,6 +231,7 @@ export async function getFiltrosOptions() {
             AD_REGCONT CON
             JOIN TGFCAB CAB ON CON.CODCONT = CAB.AD_CONTRATO
             JOIN TGFPAR PAR ON CAB.CODPARC = PAR.CODPARC
+        WHERE CAB.CODTIPOPER = ${cfg.topContrato}
             
         UNION ALL
 
@@ -212,6 +241,11 @@ export async function getFiltrosOptions() {
             , 'Contrato' AS TIPO
         FROM
             AD_REGCONT CON
+        WHERE EXISTS (
+            SELECT 1 FROM TGFCAB CAB
+            WHERE CAB.AD_CONTRATO = CON.CODCONT
+              AND CAB.CODTIPOPER = ${cfg.topContrato}
+        )
     `;
 
     const results = await JSK.consultar(query, []);

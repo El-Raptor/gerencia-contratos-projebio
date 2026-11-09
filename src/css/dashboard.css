@@ -47,3 +47,41 @@
         gap: 15px;
     }
 }
+
+/* Seletor Compras / Vendas */
+.tipo-selector {
+    display: inline-flex;
+    padding: 4px;
+    gap: 4px;
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+}
+
+.tipo-option {
+    padding: 8px 16px;
+    border: none;
+    border-radius: var(--radius-xs);
+    background: none;
+    color: var(--lables);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.tipo-option:hover {
+    background-color: var(--accent-dim);
+    color: var(--primary-color);
+}
+
+.tipo-option.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.tipo-option.active:hover {
+    background-color: var(--primary-hover);
+}

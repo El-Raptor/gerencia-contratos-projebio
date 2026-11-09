@@ -1,6 +1,7 @@
 import { loadExtratoDados } from '../service/ContratoService.js';
 import { renderExtratoTable, exportExtratoExcel } from '../components/ExtratoTable.js';
 import { renderDashboard } from './DashboardPage.js';
+import { getConfigTipo } from '../utils/tipoContrato.js';
 
 export async function renderExtratoPage(rootElement, codContrato) {
     rootElement.innerHTML = `<div class="loader">Carregando Extrato do Contrato...</div>`;
@@ -11,7 +12,7 @@ export async function renderExtratoPage(rootElement, codContrato) {
 
         rootElement.innerHTML = `
             <div class="dashboard-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <h1>Extrato de Movimentações (Contrato: ${codContrato})</h1>
+                <h1>Extrato de Movimentações (Contrato de ${getConfigTipo().label}: ${codContrato})</h1>
                 <div class="header-actions">
                     <button id="btnExportarExcel" class="button-container" ${semDados ? 'disabled' : ''}>
                         <i class="fas fa-file-excel"></i> Exportar Excel
