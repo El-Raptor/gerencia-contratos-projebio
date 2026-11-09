@@ -37,3 +37,18 @@
 .clickable-row:hover {
     background-color: var(--kpi-open-bg) !important;
 }
+/* Tags de Tipo de Lançamento (extrato) */
+.tag {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+.tag-contrato     { background: var(--kpi-open-bg);    color: var(--kpi-open-text); }
+.tag-adiantamento { background: var(--kpi-calc-bg);    color: var(--kpi-calc-text); }
+.tag-caucao       { background: var(--kpi-initial-bg); color: var(--kpi-initial-text); }
+.tag-nota         { background: var(--kpi-backlog-bg); color: var(--kpi-backlog-text); }

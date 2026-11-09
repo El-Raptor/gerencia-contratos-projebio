@@ -8,6 +8,22 @@ function formatStatusNota(status) {
     return status === 'L' ? 'Recebida' : 'Em Trânsito';
 }
 
+// Classe da tag por tipo de lançamento (tipos sem tag ficam como texto em negrito)
+const TAGS_TIPOLANC = {
+    'Contrato': 'tag-contrato',
+    'Adiantamento': 'tag-adiantamento',
+    'Caução': 'tag-caucao',
+    'Nota Fiscal': 'tag-nota'
+};
+
+function renderTipoLanc(tipo) {
+    if (!tipo) return '-';
+    const classe = TAGS_TIPOLANC[tipo];
+    return classe
+        ? `<span class="tag ${classe}">${tipo}</span>`
+        : `<strong>${tipo}</strong>`;
+}
+
 function toNumber(valor) {
     if (valor === null || valor === undefined || valor === '') return null;
     const n = Number(valor);
@@ -21,7 +37,7 @@ export function renderExtratoTable(dados) {
 
     const rows = dados.map(row => `
         <tr>
-            <td><strong>${row.TIPOLANC || '-'}</strong></td>
+            <td>${renderTipoLanc(row.TIPOLANC)}</td>
             <td>${formatDate(row.DTMOV)}</td>
             <td>${row.NUFIN || '-'}</td>
             <td>${row.NUNOTA || '-'}</td>
