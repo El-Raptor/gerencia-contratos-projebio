@@ -70,7 +70,7 @@ export async function renderDashboard(rootElement) {
             </div>
         `;
 
-        renderCharts(data.charts, data.tableData);
+        renderCharts(data.charts);
 
         // Lógica de Tabela (Drill Down)
         const tableContainer = document.getElementById('mainTableContainer');

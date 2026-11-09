@@ -1,4 +1,4 @@
-import { getContratosData, getExtratoContrato, getFiltrosOptions } from '../model/ContratoModel.js';
+import { getContratosData, getExtratoContrato, getFiltrosOptions, getProgramacoesContrato } from '../model/ContratoModel.js';
 import { parseFloatSafe, parseDateSafe } from '../utils/formatters.js';
 
 // Nova função para buscar e separar os filtros
@@ -10,9 +10,55 @@ export async function loadFiltrosOptions() {
     };
 }
 
+function chaveMes(data) {
+    return `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// Pendências Mensais:
+// - Contrato com programações: pendente de cada programação no mês da Previsão de Entrega
+//   (programação sem previsão cai no mês de DTFIM; programação 100% entregue não aparece).
+// - Contrato sem programação: pendente do contrato no mês de DTFIM.
+// Recebe os contratos JÁ filtrados, então os filtros do dashboard valem para o gráfico.
+function montarPendenciasMensais(contratos, programacoes) {
+    const programacoesPorContrato = {};
+    programacoes.forEach(p => {
+        const cod = String(p.CODCONT);
+        (programacoesPorContrato[cod] = programacoesPorContrato[cod] || []).push(p);
+    });
+
+    const mapa = {};
+    const somar = (data, qtd) => {
+        if (!data || qtd <= 0) return;
+        const chave = chaveMes(data);
+        mapa[chave] = (mapa[chave] || 0) + qtd;
+    };
+
+    contratos.forEach(row => {
+        const progs = programacoesPorContrato[String(row.CODCONT)];
+        const dtFim = parseDateSafe(row.DTFIM);
+
+        if (progs && progs.length) {
+            progs.forEach(p => somar(parseDateSafe(p.DTPREVENT) || dtFim, parseFloatSafe(p.QTDPEN)));
+        } else {
+            somar(dtFim, parseFloatSafe(row.QTDPEN));
+        }
+    });
+
+    // Ordena cronologicamente e devolve com rótulo MM/AAAA
+    const ordenado = {};
+    Object.keys(mapa).sort().forEach(chave => {
+        const [ano, mes] = chave.split('-');
+        ordenado[`${mes}/${ano}`] = mapa[chave];
+    });
+    return ordenado;
+}
+
 // Atualizado para receber os filtros
 export async function loadDashboardMetrics(filtros = { apenasVigentes: false, parceiro: '', contrato: '' }) {
-    const response = await getContratosData();
+    const [response, programacoes] = await Promise.all([
+        getContratosData(),
+        getProgramacoesContrato()
+    ]);
     let dados = response.data || response; 
 
     const hoje = new Date();
@@ -59,14 +105,12 @@ export async function loadDashboardMetrics(filtros = { apenasVigentes: false, pa
     let qtdPendenteTotal = 0;
 
     const parceirosMap = {};
-    const entregasMensaisMap = {};
 
     dados.forEach(row => {
         const vlrFaturar = parseFloatSafe(row.VLRFATURAR);
         const vlrCaucao = parseFloatSafe(row.VLRCAUCAO);
         const saldoAdiant = parseFloatSafe(row.SALDOADIANT);
         const qtdPen = parseFloatSafe(row.QTDPEN);
-        const qtdNeg = parseFloatSafe(row.QTDNEG);
 
         const dtIni = parseDateSafe(row.DTINI);
         const dtFim = parseDateSafe(row.DTFIM);
@@ -89,25 +133,13 @@ export async function loadDashboardMetrics(filtros = { apenasVigentes: false, pa
         }
         parceirosMap[row.PARCEIRO].pendente += qtdPen;
         parceirosMap[row.PARCEIRO].vlrFaturar += vlrFaturar;
-
-        if (dtIni) {
-            const mesAno = `${String(dtIni.getMonth() + 1).padStart(2, '0')}/${dtIni.getFullYear()}`;
-            entregasMensaisMap[mesAno] = (entregasMensaisMap[mesAno] || 0) + qtdNeg;
-        }
     });
 
-    const mesesOrdenados = Object.keys(entregasMensaisMap).sort((a, b) => {
-        const [mesA, anoA] = a.split('/');
-        const [mesB, anoB] = b.split('/');
-        return new Date(anoA, mesA - 1) - new Date(anoB, mesB - 1);
-    });
-
-    const entregasMensaisOrdenadoMap = {};
-    mesesOrdenados.forEach(mesAno => { entregasMensaisOrdenadoMap[mesAno] = entregasMensaisMap[mesAno]; });
+    const pendenciasMensaisMap = montarPendenciasMensais(dados, programacoes);
 
     return {
         cards: { qtdVigentes, valorTotalContratado, valorFaturarTotal, qtdPendenteTotal },
-        charts: { parceirosMap, entregasMensaisMap: entregasMensaisOrdenadoMap },
+        charts: { parceirosMap, pendenciasMensaisMap },
         tableData: dados
     };
 }

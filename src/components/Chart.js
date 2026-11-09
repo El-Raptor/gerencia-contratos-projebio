@@ -1,37 +1,11 @@
-import { parseFloatSafe, parseDateSafe } from '../utils/formatters.js';
-
-// Soma a quantidade pendente dos contratos pelo mês de término (DTFIM)
-function agruparPendenciasPorMes(tableData = []) {
-    const mapa = {};
-
-    tableData.forEach(row => {
-        const pendente = parseFloatSafe(row.QTDPEN);
-        if (pendente <= 0) return;
-
-        const data = parseDateSafe(row.DTFIM);
-        if (!data) return;
-
-        const chave = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
-        mapa[chave] = (mapa[chave] || 0) + pendente;
-    });
-
-    // Ordena cronologicamente e formata o rótulo como MM/AAAA
-    const chaves = Object.keys(mapa).sort();
-    return {
-        meses: chaves.map(k => {
-            const [ano, mes] = k.split('-');
-            return `${mes}/${ano}`;
-        }),
-        valores: chaves.map(k => mapa[k])
-    };
-}
-
-export function renderCharts({ parceirosMap }, tableData = []) {
+export function renderCharts({ parceirosMap, pendenciasMensaisMap }) {
     const parceiros = Object.keys(parceirosMap);
     const qtdPendente = parceiros.map(p => parceirosMap[p].pendente);
     const vlrFaturar = parceiros.map(p => parceirosMap[p].vlrFaturar);
 
-    const pendenciasMensais = agruparPendenciasPorMes(tableData);
+    // Já vem agrupado e ordenado pelo ContratoService (MM/AAAA -> quantidade)
+    const meses = Object.keys(pendenciasMensaisMap);
+    const pendenciasMensais = meses.map(m => pendenciasMensaisMap[m]);
 
     const colorPendente = '#6b7aff'; 
     const colorFaturar = '#00bcd4';  
@@ -91,14 +65,14 @@ export function renderCharts({ parceirosMap }, tableData = []) {
         }
     });
 
-    // Gráfico: Pendências Mensais (Barras verticais, por mês de término do contrato)
+    // Gráfico: Pendências Mensais (Barras verticais, por mês de Previsão de Entrega)
     new Chart(document.getElementById('chartPendenciasMensais'), {
         type: 'bar',
         data: {
-            labels: pendenciasMensais.meses,
+            labels: meses,
             datasets: [{
                 label: 'Qtd Pendente',
-                data: pendenciasMensais.valores,
+                data: pendenciasMensais,
                 backgroundColor: colorPendenciasMensais,
                 borderRadius: 4
             }]

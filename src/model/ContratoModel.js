@@ -108,7 +108,7 @@ export async function getExtratoContrato(codContrato) {
 
     // Programação de Venda: só existe em vendas e é apenas informativa no extrato
     // (o TIPOLANC 'Programação' não entra em nenhum acumulado abaixo)
-    const blocoProgramacao = cfg.topProgramacao ? `
+    const blocoProgramacao = (cfg.topProgramacao && cfg.programacaoNoExtrato) ? `
             UNION ALL
 
             SELECT 
@@ -234,6 +234,55 @@ export async function getExtratoContrato(codContrato) {
     const param = { value: codContrato, type: 'I' };
     const qtdParams = (query.match(/\?/g) || []).length;
     const results = await JSK.consultar(query, Array(qtdParams).fill(param));
+
+    if (results.status == 0) {
+        throw new Error(results.statusMessage);
+    }
+    return results.data || results;
+}
+
+// Programações do contrato com a quantidade ainda pendente de cada uma.
+// Pendente = quantidade programada - quantidade já atendida por notas da TOP de nota
+// (ligação pedido -> nota pela TGFVAR). Usada no gráfico Pendências Mensais.
+export async function getProgramacoesContrato() {
+    const cfg = getConfigTipo();
+    if (!cfg.topProgramacao) return [];
+
+    const query = `
+        WITH PROGRAMACAO AS (
+            SELECT
+                  PRG.AD_CONTRATO AS CODCONT
+                , PRG.NUNOTA
+                , PRG.DTPREVENT
+                , SUM(ITE.QTDNEG) AS QTDPROG
+            FROM TGFCAB PRG
+                JOIN TGFITE ITE ON ITE.NUNOTA = PRG.NUNOTA
+            WHERE PRG.CODTIPOPER = ${cfg.topProgramacao}
+              AND PRG.AD_CONTRATO IS NOT NULL
+            GROUP BY PRG.AD_CONTRATO, PRG.NUNOTA, PRG.DTPREVENT
+        ),
+        ENTREGUE AS (
+            SELECT
+                  VAR.NUNOTAORIG
+                , SUM(VAR.QTDATENDIDA) AS QTDENTREGUE
+            FROM TGFVAR VAR
+                JOIN TGFCAB NOTA ON NOTA.NUNOTA = VAR.NUNOTA
+            WHERE NOTA.CODTIPOPER = ${cfg.topNota}
+              AND VAR.NUNOTAORIG IN (SELECT NUNOTA FROM PROGRAMACAO)
+            GROUP BY VAR.NUNOTAORIG
+        )
+        SELECT
+              PRG.CODCONT
+            , PRG.NUNOTA
+            , PRG.DTPREVENT
+            , PRG.QTDPROG
+            , COALESCE(ENT.QTDENTREGUE, 0) AS QTDENTREGUE
+            , PRG.QTDPROG - COALESCE(ENT.QTDENTREGUE, 0) AS QTDPEN
+        FROM PROGRAMACAO PRG
+            LEFT JOIN ENTREGUE ENT ON ENT.NUNOTAORIG = PRG.NUNOTA
+    `;
+
+    const results = await JSK.consultar(query, []);
 
     if (results.status == 0) {
         throw new Error(results.statusMessage);

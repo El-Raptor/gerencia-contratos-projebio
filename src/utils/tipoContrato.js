@@ -7,7 +7,8 @@ export const TIPOS_CONTRATO = {
         label: 'Compras',
         topContrato: 1314,
         topNota: 1407,
-        topProgramacao: null,      // Compras não tem programação
+        topProgramacao: 1315,      // Usada no gráfico Pendências Mensais (pela Previsão de Entrega)
+        programacaoNoExtrato: false,
         topAdiantamento: 1607,
         titCaucao: 1000,
         titAdiantamento: 2000,
@@ -18,7 +19,8 @@ export const TIPOS_CONTRATO = {
         label: 'Vendas',
         topContrato: 1001,
         topNota: 1101,
-        topProgramacao: null,      // Programação de Venda (1009) não é exibida no extrato
+        topProgramacao: 1009,      // Usada no gráfico Pendências Mensais (pela Previsão de Entrega)
+        programacaoNoExtrato: false, // Programações não aparecem no extrato
         topAdiantamento: 1607,
         titCaucao: 1000,
         titAdiantamento: 2000,
