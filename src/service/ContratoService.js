@@ -108,8 +108,6 @@ export async function loadDashboardMetrics(filtros = { apenasVigentes: false, pa
 
     dados.forEach(row => {
         const vlrFaturar = parseFloatSafe(row.VLRFATURAR);
-        const vlrCaucao = parseFloatSafe(row.VLRCAUCAO);
-        const saldoAdiant = parseFloatSafe(row.SALDOADIANT);
         const qtdPen = parseFloatSafe(row.QTDPEN);
 
         const dtIni = parseDateSafe(row.DTINI);
@@ -124,7 +122,7 @@ export async function loadDashboardMetrics(filtros = { apenasVigentes: false, pa
             }
         }
 
-        valorTotalContratado += (vlrFaturar + vlrCaucao + saldoAdiant);
+        valorTotalContratado += parseFloatSafe(row.VLRCONTRATO);
         valorFaturarTotal += vlrFaturar;
         qtdPendenteTotal += qtdPen;
 

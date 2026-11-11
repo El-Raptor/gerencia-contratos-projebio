@@ -9,6 +9,7 @@ export const TIPOS_CONTRATO = {
         topNota: 1407,
         topProgramacao: 1315,      // Usada no gráfico Pendências Mensais (pela Previsão de Entrega)
         programacaoNoExtrato: false,
+        consumoAposDeposito: false, // Notas consomem os saldos desde o início do extrato
         topAdiantamento: 1607,
         titCaucao: 1000,
         titAdiantamento: 2000,
@@ -21,6 +22,7 @@ export const TIPOS_CONTRATO = {
         topNota: 1101,
         topProgramacao: 1009,      // Usada no gráfico Pendências Mensais (pela Previsão de Entrega)
         programacaoNoExtrato: false, // Programações não aparecem no extrato
+        consumoAposDeposito: true,   // Notas só consomem os saldos se o contrato tiver caução/adiantamento
         topAdiantamento: 1607,
         titCaucao: 1000,
         titAdiantamento: 2000,
